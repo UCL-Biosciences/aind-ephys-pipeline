@@ -11,6 +11,11 @@
 /docs/build/
 tests/.nfs*
 
+# External repositories
+/external/
+
 # User-specific files
 pipeline/nextflow_slurm_custom.config
+pipeline/capsule_versions_custom.env
+
 *.idea

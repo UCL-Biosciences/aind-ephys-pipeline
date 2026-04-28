@@ -35,6 +35,68 @@ Note that the parameter file will override any command line parameters specified
    The ``sorter`` field, if specified and not null, will override the command line ``--sorter`` parameter.
 
 
+Parameter Editor Webapp
+-----------------------
+
+A browser-based parameter editor is included in ``params_app/``.
+It reads the JSON schema (``pipeline/default_params_schema.json``) and renders an
+interactive form for creating and editing parameter files, with built-in validation.
+
+To run the webapp, use the included launcher script (requires Python 3):
+
+.. code-block:: bash
+
+   python params_app/serve.py
+
+This starts a local server from the repository root, prints the URL, and opens it
+in your browser. An optional port argument is supported:
+
+.. code-block:: bash
+
+   python params_app/serve.py 9000
+
+The webapp provides two tabs:
+
+* **Editor** — an interactive form with all pipeline parameters, inline descriptions,
+  enum dropdowns, nullable toggles, and collapsible sections. You can generate, download,
+  copy, or import JSON files.
+* **Validate JSON** — paste or upload an existing JSON file to validate it against the
+  schema. Errors are shown with their JSON path and message.
+
+No installation or build step is required — the app is fully static.
+
+JSON Schema
+-----------
+
+The file ``pipeline/default_params_schema.json`` is a
+`JSON Schema (draft-07) <https://json-schema.org/>`_ that formally describes every
+parameter, its type, allowed values, and defaults. You can use it for:
+
+* **Editor integration** — VS Code, PyCharm, and other editors can provide
+  autocompletion and inline validation when you add a ``$schema`` reference at the
+  top of your params file:
+
+  .. code-block:: json
+
+     {
+         "$schema": "./default_params_schema.json",
+         "job_dispatch": { "input": "nwb" }
+     }
+
+* **Programmatic validation** — validate parameter files in Python:
+
+  .. code-block:: python
+
+     import json, jsonschema
+
+     with open("pipeline/default_params_schema.json") as f:
+         schema = json.load(f)
+     with open("my_params.json") as f:
+         params = json.load(f)
+
+     jsonschema.validate(params, schema)  # raises on error
+
+
 Process-Specific Command Line Arguments
 ---------------------------------------
 
@@ -42,7 +104,7 @@ Each pipeline step can be configured with specific parameters using the format:
 
 .. code-block:: bash
 
-   --{step_name}_args "{args}"
+   --{step_name}_args="{args}"
 
 Job Dispatch Parameters
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -66,6 +128,11 @@ Job Dispatch Parameters
                                  - 5. probe_paths (optional): string or dict the probe paths to a ProbeInterface JSON file (e.g. '/path/to/probe.json'). If a dict is provided, the key is the stream name and the value is the probe path. If reader_kwargs is not provided, the reader will be created with default parameters. The probe_path is required if the reader doesn't load the probe automatically.
 
    "
+
+.. note::
+
+   If the reader needs extra packages installed, specify them in the ``EXTRA_INSTALLS`` variable in the ``capsule_versions.env`` file 
+   (e.g. ``EXTRA_INSTALLS="mtscomp"``).
 
 Preprocessing Parameters
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -132,9 +199,9 @@ Here's an example of running the pipeline with custom parameters:
    nextflow -C nextflow_local.config run main_multi_backend.nf \
      --n_jobs 16 \
      --sorter kilosort4 \
-     --job_dispatch_args "--input spikeglx --debug --debug-duration 120" \
-     --preprocessing_args "--motion compute --motion-preset nonrigid_fast_and_accurate" \
-     --nwb_ecephys_args "--skip-lfp"
+     --job_dispatch_args="--input spikeglx --debug --debug-duration 120" \
+     --preprocessing_args="--motion compute --motion-preset nonrigid_fast_and_accurate" \
+     --nwb_ecephys_args="--skip-lfp"
 
 This example:
    * Runs 16 parallel jobs

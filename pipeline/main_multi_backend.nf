@@ -23,6 +23,22 @@ clone_repo() {
 }
 '''
 
+def buildStepArgs(Map json_section, String cli_param_name) {
+    def args_map = json_section ? new LinkedHashMap(json_section) : [:]
+    if (cli_param_name in params_keys && params[cli_param_name] instanceof String) {
+        println "Merging ${cli_param_name} from JSON with CLI args: ${params[cli_param_name]}"
+        def cli_tokens = params[cli_param_name].trim().split(/\s+/) as List
+        for (int i = 0; i < cli_tokens.size(); i++) {
+            if (cli_tokens[i].startsWith('--')) {
+                def key = cli_tokens[i].substring(2).replace('-', '_')
+                def value = (i + 1 < cli_tokens.size() && !cli_tokens[i + 1].startsWith('--')) ? cli_tokens[++i] : true
+                args_map[key] = value
+            }
+        }
+    }
+    return args_map ? "--params '${groovy.json.JsonOutput.toJson(args_map)}'" : ""
+}
+
 println "DATA_PATH: ${DATA_PATH}"
 println "RESULTS_PATH: ${RESULTS_PATH}"
 
@@ -36,17 +52,48 @@ if (params.params_file) {
 println "PARAMS: ${params}"
 
 // get commit hashes for capsules
-params.capsule_versions = "${baseDir}/capsule_versions.env"
-def versions = [:]
-file(params.capsule_versions).eachLine { line ->
-    def (key, value) = line.tokenize('=')
-    versions[key] = value
+def parse_capsule_versions() {
+    // Check for custom versions file first, fall back to default
+    def versionsFile = file("${baseDir}/capsule_versions_custom.env")
+    if (!versionsFile.exists()) {
+        versionsFile = file("${baseDir}/capsule_versions.env")
+    }
+    capsule_versions = versionsFile.toString()
+    println "Using custom capsule versions file at: ${capsule_versions}"
+
+    // Read versions from main_sorters_slurm.nf - this needs to be accessible by included workflows too.
+    def versions = [:]
+    if (file(capsule_versions).exists()) {
+        file(capsule_versions).eachLine { line ->
+            if (line.contains('=')) {
+                def idx = line.indexOf('=')
+                def key = line.substring(0, idx).trim()
+                def value = line.substring(idx + 1).trim().replaceAll(/^["']|["']$/, '')
+                versions[key] = value
+            }
+        }
+    } else {
+        println "Warning: Capsule versions file not found at ${capsule_versions}. Using empty versions map."
+    }
+    versions
 }
 
-// container tag
-params.container_tag = "si-${versions['SPIKEINTERFACE_VERSION']}"
-println "CONTAINER TAG: ${params.container_tag}"
+params.versions = parse_capsule_versions()
 
+// container tag
+params.container_tag = "si-${params.versions['SPIKEINTERFACE_VERSION']}"
+println "CONTAINER TAG: ${params.container_tag}"
+params.extra_installs = params.versions['EXTRA_INSTALLS'] ?: ""
+if (params.extra_installs) {
+    println "Extra installs specified: ${params.extra_installs}"
+} else {
+    println "No extra installs specified."
+}
+def extra_installs_list = params.extra_installs ? params.extra_installs.split(',').collect { it.trim() }.findAll { it } : []
+def extra_installs_cmd = extra_installs_list ? "pip install " + extra_installs_list.collect { "'" + it + "'" }.join(' ') : ""
+def extra_installs_echo = extra_installs_list ? "echo 'installing extra packages: " + extra_installs_list.join(', ') + "'" : ""
+
+// params keys on the outer level were loaded via CLI flags (the `json_params` are from the `params_file`)
 params_keys = params.keySet()
 
 // if not specified, assume local executor
@@ -84,74 +131,30 @@ if (params.params_file) {
     println "No parameters file provided, using command line arguments."
 }
 
-// Initialize args variables with params from JSON file or command line args
-def job_dispatch_args = ""
-if (params.params_file && json_params.job_dispatch) {
-    job_dispatch_args = "--params '${groovy.json.JsonOutput.toJson(json_params.job_dispatch)}'"
-} else if ("job_dispatch_args" in params_keys && params.job_dispatch_args instanceof String) {
-    job_dispatch_args = params.job_dispatch_args
-}
+// Build params: merge CLI overrides, stringify once
+def job_dispatch_args = buildStepArgs(json_params.job_dispatch, "job_dispatch_args")
+def preprocessing_args = buildStepArgs(json_params.preprocessing, "preprocessing_args")
+def postprocessing_args = buildStepArgs(json_params.postprocessing, "postprocessing_args")
+def curation_args = buildStepArgs(json_params.curation, "curation_args")
+def visualization_kwargs = buildStepArgs(json_params.visualization, "visualization_kwargs")
+def nwb_ecephys_args = buildStepArgs(json_params.nwb?.ecephys, "nwb_ecephys_args")
 
-def preprocessing_args = ""
-if (params.params_file && json_params.preprocessing) {
-    preprocessing_args = "--params '${groovy.json.JsonOutput.toJson(json_params.preprocessing)}'"
-} else if ("preprocessing_args" in params_keys && params.preprocessing_args instanceof String) {
-    preprocessing_args = params.preprocessing_args
-}
-
-def postprocessing_args = ""
-if (params.params_file && json_params.postprocessing) {
-    postprocessing_args = "--params '${groovy.json.JsonOutput.toJson(json_params.postprocessing)}'"
-} else if ("postprocessing_args" in params_keys && params.postprocessing_args instanceof String) {
-    postprocessing_args = params.postprocessing_args
-}
-
-def curation_args = ""
-if (params.params_file && json_params.curation) {
-    curation_args = "--params '${groovy.json.JsonOutput.toJson(json_params.curation)}'"
-} else if ("curation_args" in params_keys && params.curation_args instanceof String) {
-    curation_args = params.curation_args
-}
-
-def visualization_kwargs = ""
-if (params.params_file && json_params.visualization) {
-    visualization_kwargs = "--params '${groovy.json.JsonOutput.toJson(json_params.visualization)}'"
-} else if ("visualization_kwargs" in params_keys && params.visualization_kwargs instanceof String) {
-    visualization_kwargs = params.visualization_kwargs
-}
-
-def nwb_ecephys_args = ""
-if (params.params_file && json_params.nwb?.ecephys) {
-    nwb_ecephys_args = "--params '${groovy.json.JsonOutput.toJson(json_params.nwb.ecephys)}'"
-} else if ("nwb_ecephys_args" in params_keys && params.nwb_ecephys_args instanceof String) {
-    nwb_ecephys_args = params.nwb_ecephys_args
-}
-
-// For spikesorting, use the parameters for the selected sorter
+// Spikesorting: resolve sorter-specific sub-map
 def sorter = null
 if (params.params_file && json_params.spikesorting) {
     sorter = json_params.spikesorting.sorter ?: null
 }
-
 if (sorter == null && "sorter" in params_keys) {
     sorter = params.sorter ?: "kilosort4"
 }
-
-def spikesorting_args = ""
-if (params.params_file && json_params.spikesorting) {
-    def sorter_params = json_params.spikesorting[sorter]
-    if (sorter_params) {
-        spikesorting_args = "--params '${groovy.json.JsonOutput.toJson(sorter_params)}'"
-    }
-} else if ("spikesorting_args" in params_keys) {
-    spikesorting_args = params.spikesorting_args
-}
-
 if (sorter == null) {
     println "No sorter specified, defaulting to kilosort4"
     sorter = "kilosort4"
 }
-
+def spikesorting_args = buildStepArgs(
+    json_params.spikesorting ? json_params.spikesorting[sorter] : null,
+    "spikesorting_args"
+)
 println "Using SORTER: ${sorter} with args: ${spikesorting_args}"
 
 if (runmode == 'fast'){
@@ -183,6 +186,9 @@ process job_dispatch {
     #!/usr/bin/env bash
     set -e
 
+    ${extra_installs_echo}
+    ${extra_installs_cmd}
+
     mkdir -p capsule
     mkdir -p capsule/data
     mkdir -p capsule/results
@@ -196,7 +202,7 @@ process job_dispatch {
 
     echo "[${task.tag}] cloning git repo..."
     ${gitCloneFunction}
-    clone_repo "${params.git_repo_prefix}ephys-job-dispatch.git" "${versions['JOB_DISPATCH']}"
+    clone_repo "${params.git_repo_prefix}ephys-job-dispatch.git" "${params.versions['JOB_DISPATCH']}"
 
     echo "[${task.tag}] running capsule..."
     cd capsule/code
@@ -231,6 +237,9 @@ process preprocessing {
     #!/usr/bin/env bash
     set -e
 
+    ${extra_installs_echo}
+    ${extra_installs_cmd}
+
     mkdir -p capsule
     mkdir -p capsule/data
     mkdir -p capsule/results
@@ -244,7 +253,7 @@ process preprocessing {
 
     echo "[${task.tag}] cloning git repo..."
     ${gitCloneFunction}
-    clone_repo "${params.git_repo_prefix}ephys-preprocessing.git" "${versions['PREPROCESSING']}"
+    clone_repo "${params.git_repo_prefix}ephys-preprocessing.git" "${params.versions['PREPROCESSING']}"
 
     echo "[${task.tag}] running capsule..."
     cd capsule/code
@@ -285,7 +294,7 @@ process spikesort_kilosort25 {
 
     echo "[${task.tag}] cloning git repo..."
     ${gitCloneFunction}
-    clone_repo "${params.git_repo_prefix}ephys-spikesort-kilosort25.git" "${versions['SPIKESORT_KS25']}"
+    clone_repo "${params.git_repo_prefix}ephys-spikesort-kilosort25.git" "${params.versions['SPIKESORT_KS25']}"
 
     echo "[${task.tag}] running capsule..."
     cd capsule/code
@@ -326,7 +335,7 @@ process spikesort_kilosort4 {
 
     echo "[${task.tag}] cloning git repo..."
     ${gitCloneFunction}
-    clone_repo "${params.git_repo_prefix}ephys-spikesort-kilosort4.git" "${versions['SPIKESORT_KS4']}"
+    clone_repo "${params.git_repo_prefix}ephys-spikesort-kilosort4.git" "${params.versions['SPIKESORT_KS4']}"
 
     echo "[${task.tag}] running capsule..."
     cd capsule/code
@@ -367,7 +376,7 @@ process spikesort_spykingcircus2 {
 
     echo "[${task.tag}] cloning git repo..."
     ${gitCloneFunction}
-    clone_repo "${params.git_repo_prefix}ephys-spikesort-spykingcircus2.git" "${versions['SPIKESORT_SC2']}"
+    clone_repo "${params.git_repo_prefix}ephys-spikesort-spykingcircus2.git" "${params.versions['SPIKESORT_SC2']}"
 
     echo "[${task.tag}] running capsule..."
     cd capsule/code
@@ -408,7 +417,7 @@ process spikesort_lupin {
 
     echo "[${task.tag}] cloning git repo..."
     ${gitCloneFunction}
-    clone_repo "${params.git_repo_prefix}ephys-spikesort-lupin.git" "${versions['SPIKESORT_LUPIN']}"
+    clone_repo "${params.git_repo_prefix}ephys-spikesort-lupin.git" "${params.versions['SPIKESORT_LUPIN']}"
 
     echo "[${task.tag}] running capsule..."
     cd capsule/code
@@ -439,6 +448,9 @@ process postprocessing {
     #!/usr/bin/env bash
     set -e
 
+    ${extra_installs_echo}
+    ${extra_installs_cmd}
+
     mkdir -p capsule
     mkdir -p capsule/data
     mkdir -p capsule/results
@@ -452,7 +464,7 @@ process postprocessing {
 
     echo "[${task.tag}] cloning git repo..."
     ${gitCloneFunction}
-    clone_repo "${params.git_repo_prefix}ephys-postprocessing.git" "${versions['POSTPROCESSING']}"
+    clone_repo "${params.git_repo_prefix}ephys-postprocessing.git" "${params.versions['POSTPROCESSING']}"
 
     echo "[${task.tag}] running capsule..."
     cd capsule/code
@@ -493,7 +505,7 @@ process curation {
 
     echo "[${task.tag}] cloning git repo..."
     ${gitCloneFunction}
-    clone_repo "${params.git_repo_prefix}ephys-curation.git" "${versions['CURATION']}"
+    clone_repo "${params.git_repo_prefix}ephys-curation.git" "${params.versions['CURATION']}"
 
     echo "[${task.tag}] running capsule..."
     cd capsule/code
@@ -526,6 +538,9 @@ process visualization {
     #!/usr/bin/env bash
     set -e
 
+    ${extra_installs_echo}
+    ${extra_installs_cmd}
+
     mkdir -p capsule
     mkdir -p capsule/data
     mkdir -p capsule/results
@@ -539,7 +554,7 @@ process visualization {
 
     echo "[${task.tag}] cloning git repo..."
     ${gitCloneFunction}
-    clone_repo "${params.git_repo_prefix}ephys-visualization.git" "${versions['VISUALIZATION']}"
+    clone_repo "${params.git_repo_prefix}ephys-visualization.git" "${params.versions['VISUALIZATION']}"
 
     echo "[${task.tag}] running capsule..."
     cd capsule/code
@@ -577,6 +592,9 @@ process results_collector {
     #!/usr/bin/env bash
     set -e
 
+    ${extra_installs_echo}
+    ${extra_installs_cmd}
+
     mkdir -p capsule
     mkdir -p capsule/data
     mkdir -p capsule/results
@@ -588,7 +606,7 @@ process results_collector {
 
     echo "[${task.tag}] cloning git repo..."
     ${gitCloneFunction}
-    clone_repo "${params.git_repo_prefix}ephys-results-collector.git" "${versions['RESULTS_COLLECTOR']}"
+    clone_repo "${params.git_repo_prefix}ephys-results-collector.git" "${params.versions['RESULTS_COLLECTOR']}"
 
     echo "[${task.tag}] running capsule..."
     cd capsule/code
@@ -618,6 +636,9 @@ process quality_control {
     #!/usr/bin/env bash
     set -e
 
+    ${extra_installs_echo}
+    ${extra_installs_cmd}
+
     mkdir -p capsule
     mkdir -p capsule/data
     mkdir -p capsule/results
@@ -631,7 +652,7 @@ process quality_control {
 
     echo "[${task.tag}] cloning git repo..."
     ${gitCloneFunction}
-    clone_repo "${params.git_repo_prefix}ephys-processing-qc.git" "${versions['QUALITY_CONTROL']}"
+    clone_repo "${params.git_repo_prefix}ephys-processing-qc.git" "${params.versions['QUALITY_CONTROL']}"
 
     echo "[${task.tag}] running capsule..."
     cd capsule/code
@@ -672,7 +693,7 @@ process quality_control_collector {
 
     echo "[${task.tag}] cloning git repo..."
     ${gitCloneFunction}
-    clone_repo "${params.git_repo_prefix}ephys-qc-collector.git" "${versions['QUALITY_CONTROL_COLLECTOR']}"
+    clone_repo "${params.git_repo_prefix}ephys-qc-collector.git" "${params.versions['QUALITY_CONTROL_COLLECTOR']}"
 
     echo "[${task.tag}] running capsule..."
     cd capsule/code
@@ -702,6 +723,9 @@ process nwb_ecephys {
     #!/usr/bin/env bash
     set -e
 
+    ${extra_installs_echo}
+    ${extra_installs_cmd}
+
     mkdir -p capsule
     mkdir -p capsule/data
     mkdir -p capsule/results
@@ -715,7 +739,7 @@ process nwb_ecephys {
 
     echo "[${task.tag}] cloning git repo..."
     ${gitCloneFunction}
-    clone_repo "${params.git_repo_prefix}ecephys-nwb.git" "${versions['NWB_ECEPHYS']}"
+    clone_repo "${params.git_repo_prefix}ecephys-nwb.git" "${params.versions['NWB_ECEPHYS']}"
 
     echo "[${task.tag}] running capsule..."
     cd capsule/code
@@ -748,6 +772,9 @@ process nwb_units {
     #!/usr/bin/env bash
     set -e
 
+    ${extra_installs_echo}
+    ${extra_installs_cmd}
+
     mkdir -p capsule
     mkdir -p capsule/data
     mkdir -p capsule/results
@@ -755,7 +782,7 @@ process nwb_units {
 
     echo "[${task.tag}] cloning git repo..."
     ${gitCloneFunction}
-    clone_repo "${params.git_repo_prefix}units-nwb.git" "${versions['NWB_UNITS']}"
+    clone_repo "${params.git_repo_prefix}units-nwb.git" "${params.versions['NWB_UNITS']}"
 
     if [[ ${params.executor} == "slurm" ]]; then
         echo "[${task.tag}] allocated task time: ${task.time}"
