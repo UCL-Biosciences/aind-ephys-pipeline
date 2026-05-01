@@ -1,7 +1,7 @@
-#!/bin/bash
+# !/bin/bash
 #$ -S /bin/bash
-#$ -l mem=4G
-#$ -l h_rt=24:00:00
+#$ -l mem=4G # 4
+#$ -l h_rt=24:00:00 # 24
 #$ -cwd
 #$ -j y
 #$ -N nextflow_aind_ephys
@@ -18,7 +18,7 @@ elif [ "$USE_DATA" == "SHORT_SPIKEGLX" ]; then
     RESULTS_PATH="/home/ucsagil/Scratch/projects/ephys/results/test_run/short_spikeglx"
     INPUT_TYPE=spikeglx
 elif [ "$USE_DATA" == "OPEN_EPHYS" ]; then
-    DATA_PATH="/home/ucsagil/Scratch/projects/ephys/data/Neuropixels/09241_brush_10x_2_2025-05-19_12-40-45"
+    DATA_PATH="/home/ucsagil/Scratch/projects/ephys/data/Neuropixels/09241_brush_10x_2_2025-05-19_12-40-45/Record_Node_101"
     RESULTS_PATH="/home/ucsagil/Scratch/projects/ephys/results/test_run/Laura_neuropixels_ephys"
     INPUT_TYPE=openephys
 else
@@ -27,7 +27,8 @@ else
 fi
 
 # Now redirect log with variable available
-exec &>> /home/ucsagil/Scratch/projects/ephys/logs/nextflow_aind_ephys_${JOB_ID}_${INPUT_TYPE}.log
+# (note the first part checks if the script is running interactively, and only redirects if it's not. Otherwise interactive session get stuck)
+[[ $- != *i* ]] && exec &>> /home/ucsagil/Scratch/projects/ephys/logs/nextflow_aind_ephys_${JOB_ID}_${INPUT_TYPE}.log
 
 mkdir -p $RESULTS_PATH
 
@@ -46,6 +47,7 @@ else
 fi
 
 echo "Using config file: $CONFIG_FILE"
+echo "DATA_PATH is: [$DATA_PATH]"
 
 # nextflow run nf-core/testpipeline -profile test,ucl_myriad \
 # --outdir /myriadfs/home/ucsagil/Scratch/projects/ephys/test
@@ -55,8 +57,7 @@ DATA_PATH=$DATA_PATH RESULTS_PATH=$RESULTS_PATH nextflow \
     -C $CONFIG_FILE \
     -log $RESULTS_PATH/nextflow/nextflow.log \
     run $PIPELINE_PATH/pipeline/main_multi_backend.nf \
-    -work-dir $WORKDIR \
     --input $INPUT_TYPE \
-    --ecephys-path $DATA_PATH
+    -work-dir $WORKDIR 
     # --debug \
     # --debug-duration 30
