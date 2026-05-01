@@ -207,7 +207,9 @@ process job_dispatch {
     echo "[${task.tag}] running capsule..."
     cd capsule/code
     chmod +x run
-    ./run ${job_dispatch_args}
+    export DATA_PATH="\${TASK_DIR}/capsule/data/ecephys_session"
+    export INPUT_DATA_FOLDER="\${TASK_DIR}/capsule/data/ecephys_session"
+    ./run --input ${params.input} ${job_dispatch_args}
 
     MAX_DURATION_MIN=\$(python get_max_recording_duration_min.py)
 
