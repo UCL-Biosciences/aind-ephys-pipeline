@@ -18,8 +18,8 @@ elif [ "$USE_DATA" == "SHORT_SPIKEGLX" ]; then
     RESULTS_PATH="/home/ucsagil/Scratch/projects/ephys/results/test_run/short_spikeglx"
     INPUT_TYPE=spikeglx
 elif [ "$USE_DATA" == "OPEN_EPHYS" ]; then
-    DATA_PATH="/home/ucsagil/Scratch/projects/ephys/data/Neuropixels/09241_brush_10x_2_2025-05-19_12-40-45/Record_Node_101"
-    RESULTS_PATH="/home/ucsagil/Scratch/projects/ephys/results/test_run/Laura_neuropixels_ephys"
+    DATA_PATH="/myriadfs/home/ucsagil/Scratch/projects/ephys/data/Neuropixels/09241_brush_10x_2_2025-05-19_12-40-45"
+    RESULTS_PATH="/myriadfs/home/ucsagil/Scratch/projects/ephys/results/test_run/Laura_neuropixels_ephys"
     INPUT_TYPE=openephys
 else
     echo "Unknown data type: $USE_DATA"
@@ -51,12 +51,13 @@ echo "DATA_PATH is: [$DATA_PATH]"
 
 # nextflow run nf-core/testpipeline -profile test,ucl_myriad \
 # --outdir /myriadfs/home/ucsagil/Scratch/projects/ephys/test
+sed -i 's/"load_sync_timestamps": true/"load_sync_timestamps": false/' /home/ucsagil/Scratch/projects/ephys/workdir/58/581124*/capsule/data/job*.json
 
 DATA_PATH=$DATA_PATH RESULTS_PATH=$RESULTS_PATH nextflow \
     -C "$PIPELINE_PATH/pipeline/ucl_myriad.config" \
     -C $CONFIG_FILE \
     -log $RESULTS_PATH/nextflow/nextflow.log \
-    run $PIPELINE_PATH/pipeline/main_multi_backend.nf \
+    run -resume $PIPELINE_PATH/pipeline/main_multi_backend.nf \
     --input $INPUT_TYPE \
     -work-dir $WORKDIR 
     # --debug \
