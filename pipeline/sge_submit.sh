@@ -51,7 +51,11 @@ echo "DATA_PATH is: [$DATA_PATH]"
 
 # nextflow run nf-core/testpipeline -profile test,ucl_myriad \
 # --outdir /myriadfs/home/ucsagil/Scratch/projects/ephys/test
-sed -i 's/"load_sync_timestamps": true/"load_sync_timestamps": false/' /home/ucsagil/Scratch/projects/ephys/workdir/58/581124*/capsule/data/job*.json
+
+# timestamps look broken in the dataset we're using for testing, so we need to disable the load_sync_timestamps option in the config file. This is a temporary workaround until we can fix the timestamps in the dataset or add as a proper parameter
+# sed -i 's/"load_sync_timestamps": true/"load_sync_timestamps": false/' /home/ucsagil/Scratch/projects/ephys/workdir/71/cc7420f519347e8f779cf5349b2321/capsule/results/job_0.json
+
+### HAVE TRIED TO FIX THIS PROPERLY ^^^^ ### see readme
 
 DATA_PATH=$DATA_PATH RESULTS_PATH=$RESULTS_PATH nextflow \
     -C "$PIPELINE_PATH/pipeline/ucl_myriad.config" \

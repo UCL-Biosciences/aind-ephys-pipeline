@@ -202,7 +202,10 @@ process job_dispatch {
 
     echo "[${task.tag}] cloning git repo..."
     ${gitCloneFunction}
-    clone_repo "${params.git_repo_prefix}ephys-job-dispatch.git" "${params.versions['JOB_DISPATCH']}"
+    ## clone_repo "${params.git_repo_prefix}ephys-job-dispatch.git" "${params.versions['JOB_DISPATCH']}"
+    ## Note using a temp fork of the repo to use load_sync_timestamps=not SKIP_TIMESTAMPS_CHECK
+    clone_repo "https://github.com/UCL-Biosciences/aind-ephys-job-dispatch.git" "${params.versions['JOB_DISPATCH']}"
+
 
     echo "[${task.tag}] running capsule..."
     cd capsule/code
