@@ -59,9 +59,9 @@ echo "DATA_PATH is: [$DATA_PATH]"
 
 DATA_PATH=$DATA_PATH RESULTS_PATH=$RESULTS_PATH nextflow \
     -C "$PIPELINE_PATH/pipeline/ucl_myriad.config" \
-    -C $CONFIG_FILE \
+    -C $CONFIG_FILE --no-timestamps \
     -log $RESULTS_PATH/nextflow/nextflow.log \
-    run -resume $PIPELINE_PATH/pipeline/main_multi_backend.nf \
+    run $PIPELINE_PATH/pipeline/main_multi_backend.nf \
     --input $INPUT_TYPE \
     -work-dir $WORKDIR 
     # --debug \
