@@ -59,10 +59,11 @@ echo "DATA_PATH is: [$DATA_PATH]"
 
 DATA_PATH=$DATA_PATH RESULTS_PATH=$RESULTS_PATH nextflow \
     -C "$PIPELINE_PATH/pipeline/ucl_myriad.config" \
-    -C $CONFIG_FILE --no-timestamps \
+    -C $CONFIG_FILE \
     -log $RESULTS_PATH/nextflow/nextflow.log \
     run $PIPELINE_PATH/pipeline/main_multi_backend.nf \
     --input $INPUT_TYPE \
-    -work-dir $WORKDIR 
+    -work-dir $WORKDIR \
+    --params '{"no_timestamps": true}' # note format of adding params via json
     # --debug \
     # --debug-duration 30
