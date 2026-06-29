@@ -4,10 +4,19 @@
 #$ -l h_rt=24:00:00 # 24
 #$ -cwd
 #$ -j y
-#$ -N nextflow_aind_ephys
 #$ -m be # email to be notified when the job begins and ends
+#$ -N "nextflow_aind_submit"
 
-USE_DATA=OPEN_EPHYS # can be NWB_SYNTHETIC, SHORT_SPIKEGLX, or others
+USE_DATA=$1 # supplied with command line flag.
+# can be NWB_SYNTHETIC, SHORT_SPIKEGLX, SARAH_SPIKEGLX, OPEN_EPHYS
+# e.g. qsub aind-ephys-pipeline/pipeline/sge_submit.sh OPEN_EPHYS
+
+### a note about arrays
+# for spike glx data, each session is processed separately and the script must be submitted as an array, e.g.
+# qsub -t 1-5 aind-ephys-pipeline/pipeline/sge_submit.sh SARAH_SPIKEGLX
+# and the session data is pulled in the script below.
+
+PARAMS_FILE=""  # default: no params file
 
 if [ "$USE_DATA" == "NWB_SYNTHETIC" ]; then
     DATA_PATH="/home/ucsagil/Scratch/projects/ephys/aind-ephys-pipeline/sample_dataset/nwb"
@@ -21,10 +30,21 @@ elif [ "$USE_DATA" == "OPEN_EPHYS" ]; then
     DATA_PATH="/myriadfs/home/ucsagil/Scratch/projects/ephys/data/Neuropixels/09241_brush_10x_2_2025-05-19_12-40-45"
     RESULTS_PATH="/myriadfs/home/ucsagil/Scratch/projects/ephys/results/test_run/Laura_neuropixels_ephys"
     INPUT_TYPE=openephys
+    # create a temporary params file for this run - only this use needs no_timestamps
+    PARAMS_FILE=$(mktemp /tmp/ephys_params_XXXX.json)
+    echo '{"job_dispatch": {"no_timestamps": true, "input": "openephys"}, "preprocessing": {"min_preprocessing_duration": 20}}' > $PARAMS_FILE
+elif [ "$USE_DATA" == "SARAH_SPIKEGLX" ]; then
+    SESSIONS=$(ls /home/ucsagil/Scratch/projects/ephys/data/spikeglx)
+    SESSION=$(echo $SESSIONS | cut -f $SGE_TASK_ID -d ' ')
+    DATA_PATH="/home/ucsagil/Scratch/projects/ephys/data/spikeglx/$SESSION"
+    RESULTS_PATH="/myriadfs/home/ucsagil/Scratch/projects/ephys/results/sarah_spikeglx/$SESSION"
+    INPUT_TYPE=spikeglx
 else
     echo "Unknown data type: $USE_DATA"
     exit 1
 fi
+
+qalter $JOB_ID -N "nextflow_aind_${INPUT_TYPE}"
 
 # Now redirect log with variable available
 # (note the first part checks if the script is running interactively, and only redirects if it's not. Otherwise interactive session get stuck)
@@ -58,12 +78,12 @@ echo "DATA_PATH is: [$DATA_PATH]"
 ### HAVE TRIED TO FIX THIS PROPERLY ^^^^ ### see readme
 
 DATA_PATH=$DATA_PATH RESULTS_PATH=$RESULTS_PATH nextflow \
-    -C "$PIPELINE_PATH/pipeline/ucl_myriad.config" \
-    -C $CONFIG_FILE \
+    -c "$PIPELINE_PATH/pipeline/ucl_myriad.config" \
+    -c $CONFIG_FILE \
     -log $RESULTS_PATH/nextflow/nextflow.log \
     run $PIPELINE_PATH/pipeline/main_multi_backend.nf \
     --input $INPUT_TYPE \
     -work-dir $WORKDIR \
-    --params '{"no_timestamps": true}' # note format of adding params via json
+    ${PARAMS_FILE:+--params_file $PARAMS_FILE} # expands to nothing if PARAMS_FILE is empty, or --params_file /tmp/ephys_params_XXXX.json if it's set.
     # --debug \
     # --debug-duration 30
