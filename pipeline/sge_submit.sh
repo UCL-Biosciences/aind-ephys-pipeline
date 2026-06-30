@@ -8,7 +8,7 @@
 #$ -N "nextflow_aind_submit"
 
 USE_DATA=$1 # supplied with command line flag.
-# can be NWB_SYNTHETIC, SHORT_SPIKEGLX, SARAH_SPIKEGLX, OPEN_EPHYS
+# can be NWB_SYNTHETIC, SHORT_SPIKEGLX, SARAH_SPIKEGLX, SARAH_SPIKEGLX_CONCAT, OPEN_EPHYS
 # e.g. qsub aind-ephys-pipeline/pipeline/sge_submit.sh OPEN_EPHYS
 
 ### a note about arrays
@@ -39,6 +39,12 @@ elif [ "$USE_DATA" == "SARAH_SPIKEGLX" ]; then
     DATA_PATH="/home/ucsagil/Scratch/projects/ephys/data/spikeglx/$SESSION"
     RESULTS_PATH="/myriadfs/home/ucsagil/Scratch/projects/ephys/results/sarah_spikeglx/$SESSION"
     INPUT_TYPE=spikeglx
+elif [ "$USE_DATA" == "SARAH_SPIKEGLX_CONCAT" ]; then
+    DATA_PATH="/home/ucsagil/Scratch/projects/ephys/data/spikeglx/concat_session"
+    RESULTS_PATH="/myriadfs/home/ucsagil/Scratch/projects/ephys/results/sarah_spikeglx_concat/"
+    INPUT_TYPE=spikeinterface
+    PARAMS_FILE=$(mktemp /tmp/ephys_params_XXXX.json)
+    echo '{"job_dispatch": {"input": "spikeinterface", "spikeinterface_info": {"reader_type": "spikeinterface"}}}' > $PARAMS_FILE
 else
     echo "Unknown data type: $USE_DATA"
     exit 1
@@ -48,7 +54,7 @@ qalter $JOB_ID -N "nextflow_aind_${INPUT_TYPE}"
 
 # Now redirect log with variable available
 # (note the first part checks if the script is running interactively, and only redirects if it's not. Otherwise interactive session get stuck)
-[[ $- != *i* ]] && exec &>> /home/ucsagil/Scratch/projects/ephys/logs/nextflow_aind_ephys_${JOB_ID}_${INPUT_TYPE}.log
+[[ $- != *i* ]] && exec &>> /home/ucsagil/Scratch/projects/ephys/logs/nextflow_aind_ephys_${JOB_ID}_${TASK_ID:-$INPUT_TYPE}.log
 
 mkdir -p $RESULTS_PATH
 
@@ -76,12 +82,14 @@ echo "DATA_PATH is: [$DATA_PATH]"
 # sed -i 's/"load_sync_timestamps": true/"load_sync_timestamps": false/' /home/ucsagil/Scratch/projects/ephys/workdir/71/cc7420f519347e8f779cf5349b2321/capsule/results/job_0.json
 
 ### HAVE TRIED TO FIX THIS PROPERLY ^^^^ ### see readme
+export NXF_VER=24.10.0
 
 DATA_PATH=$DATA_PATH RESULTS_PATH=$RESULTS_PATH nextflow \
     -c "$PIPELINE_PATH/pipeline/ucl_myriad.config" \
     -c $CONFIG_FILE \
     -log $RESULTS_PATH/nextflow/nextflow.log \
     run $PIPELINE_PATH/pipeline/main_multi_backend.nf \
+    -resume \
     --input $INPUT_TYPE \
     -work-dir $WORKDIR \
     ${PARAMS_FILE:+--params_file $PARAMS_FILE} # expands to nothing if PARAMS_FILE is empty, or --params_file /tmp/ephys_params_XXXX.json if it's set.
