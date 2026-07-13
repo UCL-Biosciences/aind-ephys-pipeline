@@ -1,7 +1,8 @@
 # !/bin/bash
 #$ -S /bin/bash
-#$ -l mem=4G # 4
-#$ -l h_rt=24:00:00 # 24
+#$ -pe smp 1
+#$ -l mem=12G # 4
+#$ -l h_rt=72:00:00 # 24
 #$ -cwd
 #$ -j y
 #$ -m be # email to be notified when the job begins and ends
@@ -10,6 +11,12 @@
 USE_DATA=$1 # supplied with command line flag.
 # can be NWB_SYNTHETIC, SHORT_SPIKEGLX, SARAH_SPIKEGLX, SARAH_SPIKEGLX_CONCAT, OPEN_EPHYS
 # e.g. qsub aind-ephys-pipeline/pipeline/sge_submit.sh OPEN_EPHYS
+
+### by default, this script will use the --resume flag to resume from previous jobs (if possible)
+### if you want to overwrite that, you can pass --no-resume as a command line argument to this script, e.g.
+### qsub aind-ephys-pipeline/pipeline/sge_submit.sh OPEN_EPHYS --no-resume
+RESUME_FLAG="-resume"
+[[ " $* " == *" --no-resume "* ]] && RESUME_FLAG=""
 
 ### a note about arrays
 # for spike glx data, each session is processed separately and the script must be submitted as an array, e.g.
@@ -30,9 +37,11 @@ elif [ "$USE_DATA" == "OPEN_EPHYS" ]; then
     DATA_PATH="/myriadfs/home/ucsagil/Scratch/projects/ephys/data/Neuropixels/09241_brush_10x_2_2025-05-19_12-40-45"
     RESULTS_PATH="/myriadfs/home/ucsagil/Scratch/projects/ephys/results/test_run/Laura_neuropixels_ephys"
     INPUT_TYPE=openephys
+    ### separate fix is just calculate timestamps per script reconstruct-OpenEphys-timestamps.py (not in repo)
+    ### if that works, won't use these for now
     # create a temporary params file for this run - only this use needs no_timestamps
-    PARAMS_FILE=$(mktemp /tmp/ephys_params_XXXX.json)
-    echo '{"job_dispatch": {"no_timestamps": true, "input": "openephys"}, "preprocessing": {"min_preprocessing_duration": 20}}' > $PARAMS_FILE
+    #PARAMS_FILE=$(mktemp /tmp/ephys_params_XXXX.json)
+    #echo '{"job_dispatch": {"no_timestamps": true, "input": "openephys"}, "preprocessing": {"min_preprocessing_duration": 20}}' > $PARAMS_FILE
 elif [ "$USE_DATA" == "SARAH_SPIKEGLX" ]; then
     SESSIONS=$(ls /home/ucsagil/Scratch/projects/ephys/data/spikeglx)
     SESSION=$(echo $SESSIONS | cut -f $SGE_TASK_ID -d ' ')
@@ -59,7 +68,7 @@ qalter $JOB_ID -N "nextflow_aind_${INPUT_TYPE}"
 mkdir -p $RESULTS_PATH
 
 PIPELINE_PATH="/home/ucsagil/Scratch/projects/ephys/aind-ephys-pipeline"
-WORKDIR="/home/ucsagil/Scratch/projects/ephys/workdir"
+WORKDIR="/home/ucsagil/Scratch/projects/ephys/workdir/$USE_DATA"
 
 export APPTAINER_TMPDIR=$HOME/Scratch/apptainer_tmp
 export SINGULARITY_TMPDIR=$HOME/Scratch/apptainer_tmp
@@ -89,7 +98,7 @@ DATA_PATH=$DATA_PATH RESULTS_PATH=$RESULTS_PATH nextflow \
     -c $CONFIG_FILE \
     -log $RESULTS_PATH/nextflow/nextflow.log \
     run $PIPELINE_PATH/pipeline/main_multi_backend.nf \
-    -resume \
+    $RESUME_FLAG \
     --input $INPUT_TYPE \
     -work-dir $WORKDIR \
     ${PARAMS_FILE:+--params_file $PARAMS_FILE} # expands to nothing if PARAMS_FILE is empty, or --params_file /tmp/ephys_params_XXXX.json if it's set.
