@@ -86,6 +86,44 @@ If you provide params via ${PARAMS_FILE:+--params_file $PARAMS_FILE}, preprocess
 
 Updated capsule versions for this and main_multi_backend.nf
 
+### processing QC
+Two errors here fixed by same patch to aind-ephys-processing-qc (7f0a697d9dbb9e5577764515d2e60d389def2cc1)
+
+QC crash: "Multi-segment object. Provide 'segment_index'"
+[UNCONFIRMED - patched, not yet verified on a full re-run]
+
+- Symptom: quality_control crashes with "Multi-segment object.
+  Provide 'segment_index'" in generate_event_qc.
+
+- Why: multi-day recordings built with si.append_recordings() end up
+  as one multi-segment recording (one segment per day). QC's event
+  code assumes only one segment and crashes when there's more than
+  one.
+
+- Fix: UCL-Biosciences/aind-ephys-processing-qc, branch
+  fix/multi-segment-and-broken-relative-paths. Patches QC to look up
+  saturation event times per-segment instead of on the whole
+  recording at once.
+
+  QC silent failure: "Error loading preprocessed data..." + huge fake
+saturation counts
+[UNCONFIRMED - patched, not yet verified on a full re-run]
+
+- Symptom: logs show "Error loading preprocessed data..." followed
+  by an implausibly huge saturation event count (100M+).
+
+- Why: the preprocessed recording remembers its data folder as a
+  relative path (e.g. "../../../../data/spikeglx/concat_session").
+  That path only works from the exact folder depth it was saved at -
+  Nextflow tasks don't all sit at that same depth, so the path
+  silently fails to resolve. QC then falls back to computing
+  saturation on raw (unfiltered, unreferenced) data instead of the
+  preprocessed recording, which produces nonsense event counts.
+
+- Fix: UCL-Biosciences/aind-ephys-processing-qc, branch
+  fix/multi-segment-and-broken-relative-paths. Patches QC to search
+  the task's data folder for a folder/file matching the broken path's
+  name, and use that instead.
 
 ## Input data
 the pipeline handles:

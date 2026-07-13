@@ -659,7 +659,9 @@ process quality_control {
 
     echo "[${task.tag}] cloning git repo..."
     ${gitCloneFunction}
-    clone_repo "${params.git_repo_prefix}ephys-processing-qc.git" "${params.versions['QUALITY_CONTROL']}"
+    // fixing 2 bugs in the quality control repo, so using a temp fork for now
+    clone_repo "https://github.com/UCL-Biosciences/aind-ephys-processing-qc.git" "${params.versions['QUALITY_CONTROL']}"
+    // clone_repo "${params.git_repo_prefix}ephys-processing-qc.git" "${params.versions['QUALITY_CONTROL']}"
 
     echo "[${task.tag}] running capsule..."
     cd capsule/code
