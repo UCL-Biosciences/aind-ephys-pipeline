@@ -81,6 +81,23 @@ Since no params file, added flag in the sge script: --no-timestamps. But this di
 So added an awkward tmp params file to the top of the script. The problem is that this means the params file overwrites all arguments given in the nextflow command, so we also need to add input type to the params file (for open ephys).
     echo '{"job_dispatch": {"no_timestamps": true, "input": "openephys"}}' > $PARAMS_FILE
 
+#### timestamps fix 3 (today I choose the easy life)
+Decided to try adding time data before running the pipeline. if this works, it will at least confirm that we can run open ephys data through the pipeline. Can then decide whether to pursue again the timestamp fixes.
+
+Claude wrote some code that reconstructs missing Open Ephys timestamps from sample_numbers.npy + sampling rate. For sessions without external TTL sync, Open Ephys writes an empty (or all-zero) timestamps.npy per continuous stream. This script derives real timestamps as:
+ 
+    timestamps = sample_numbers / sample_rate
+ 
+using the per-stream sample_rate declared in structure.oebin, and writes them back into the stream's continuous/ folder (backing up whatever was there first).
+ 
+Usage:
+    python3 reconstruct-OpenEphys-timestamps.py.py /path/to/.../experiment1/recording1
+ 
+    # Dry run (just report what it would do, don't write anything):
+    python3 reconstruct-OpenEphys-timestamps.py.py /path/to/.../recording1 --dry-run
+
+file is currently here: /home/ucsagil/Scratch/projects/ephys/reconstruct-OpenEphys-timestamps.py
+
 #### preprocessing with params
 If you provide params via ${PARAMS_FILE:+--params_file $PARAMS_FILE}, preprocessing capsule follows some logic that breaks. I forked [preprocessing repo ](https://github.com/jdgilbert245/aind-ephys-preprocessing) (note personal not Biosciences - accident), then made the change in 6aca7fce31f45da605f3905d419371ba42827d5a. 
 
@@ -113,11 +130,6 @@ QC crash: "Multi-segment object. Provide 'segment_index'"
 - Fix: patched generate_drift_qc to handle multi-segment peaks data.
   (Confirmed this is unrelated to the event QC fix - touches a
   different function, no overlap.)
-
-
-#####
-
-
 
 QC silent failure: "Error loading preprocessed data..." + huge fake
 saturation counts
