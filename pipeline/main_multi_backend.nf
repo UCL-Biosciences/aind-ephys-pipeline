@@ -252,9 +252,11 @@ process preprocessing {
 
     if [[ ${params.executor} == "slurm" ]]; then
         echo "[${task.tag}] allocated task time: ${task.time}"
-        # Make sure N_JOBS matches allocated CPUs on SLURM
-        export N_JOBS_EXT=${task.cpus}
     fi
+    # Always cap N_JOBS to the CPUs actually allocated by the scheduler,
+    # regardless of backend (previously SLURM-only; SGE never set this,
+    # letting n_jobs default to -1 and oversubscribe shared Myriad nodes)
+    export N_JOBS_EXT=${task.cpus}
 
     echo "[${task.tag}] cloning git repo..."
     ${gitCloneFunction}
@@ -295,9 +297,11 @@ process spikesort_kilosort25 {
 
     if [[ ${params.executor} == "slurm" ]]; then
         echo "[${task.tag}] allocated task time: ${task.time}"
-        # Make sure N_JOBS matches allocated CPUs on SLURM
-        export N_JOBS_EXT=${task.cpus}
     fi
+    # Always cap N_JOBS to the CPUs actually allocated by the scheduler,
+    # regardless of backend (previously SLURM-only; SGE never set this,
+    # letting n_jobs default to -1 and oversubscribe shared Myriad nodes)
+    export N_JOBS_EXT=${task.cpus}
 
     echo "[${task.tag}] cloning git repo..."
     ${gitCloneFunction}
@@ -336,9 +340,11 @@ process spikesort_kilosort4 {
 
     if [[ ${params.executor} == "slurm" ]]; then
         echo "[${task.tag}] allocated task time: ${task.time}"
-        # Make sure N_JOBS matches allocated CPUs on SLURM
-        export N_JOBS_EXT=${task.cpus}
     fi
+    # Always cap N_JOBS to the CPUs actually allocated by the scheduler,
+    # regardless of backend (previously SLURM-only; SGE never set this,
+    # letting n_jobs default to -1 and oversubscribe shared Myriad nodes)
+    export N_JOBS_EXT=${task.cpus}
 
     echo "[${task.tag}] cloning git repo..."
     ${gitCloneFunction}
@@ -377,9 +383,11 @@ process spikesort_spykingcircus2 {
 
     if [[ ${params.executor} == "slurm" ]]; then
         echo "[${task.tag}] allocated task time: ${task.time}"
-        # Make sure N_JOBS matches allocated CPUs on SLURM
-        export N_JOBS_EXT=${task.cpus}
     fi
+    # Always cap N_JOBS to the CPUs actually allocated by the scheduler,
+    # regardless of backend (previously SLURM-only; SGE never set this,
+    # letting n_jobs default to -1 and oversubscribe shared Myriad nodes)
+    export N_JOBS_EXT=${task.cpus}
 
     echo "[${task.tag}] cloning git repo..."
     ${gitCloneFunction}
@@ -418,9 +426,11 @@ process spikesort_lupin {
 
     if [[ ${params.executor} == "slurm" ]]; then
         echo "[${task.tag}] allocated task time: ${task.time}"
-        # Make sure N_JOBS matches allocated CPUs on SLURM
-        export N_JOBS_EXT=${task.cpus}
     fi
+    # Always cap N_JOBS to the CPUs actually allocated by the scheduler,
+    # regardless of backend (previously SLURM-only; SGE never set this,
+    # letting n_jobs default to -1 and oversubscribe shared Myriad nodes)
+    export N_JOBS_EXT=${task.cpus}
 
     echo "[${task.tag}] cloning git repo..."
     ${gitCloneFunction}
@@ -465,9 +475,11 @@ process postprocessing {
 
     if [[ ${params.executor} == "slurm" ]]; then
         echo "[${task.tag}] allocated task time: ${task.time}"
-        # Make sure N_JOBS matches allocated CPUs on SLURM
-        export N_JOBS_EXT=${task.cpus}
     fi
+    # Always cap N_JOBS to the CPUs actually allocated by the scheduler,
+    # regardless of backend (previously SLURM-only; SGE never set this,
+    # letting n_jobs default to -1 and oversubscribe shared Myriad nodes)
+    export N_JOBS_EXT=${task.cpus}
 
     echo "[${task.tag}] cloning git repo..."
     ${gitCloneFunction}
@@ -506,9 +518,11 @@ process curation {
 
     if [[ ${params.executor} == "slurm" ]]; then
         echo "[${task.tag}] allocated task time: ${task.time}"
-        # Make sure N_JOBS matches allocated CPUs on SLURM
-        export N_JOBS_EXT=${task.cpus}
     fi
+    # Always cap N_JOBS to the CPUs actually allocated by the scheduler,
+    # regardless of backend (previously SLURM-only; SGE never set this,
+    # letting n_jobs default to -1 and oversubscribe shared Myriad nodes)
+    export N_JOBS_EXT=${task.cpus}
 
     echo "[${task.tag}] cloning git repo..."
     ${gitCloneFunction}
@@ -555,9 +569,11 @@ process visualization {
 
     if [[ ${params.executor} == "slurm" ]]; then
         echo "[${task.tag}] allocated task time: ${task.time}"
-        # Make sure N_JOBS matches allocated CPUs on SLURM
-        export N_JOBS_EXT=${task.cpus}
     fi
+    # Always cap N_JOBS to the CPUs actually allocated by the scheduler,
+    # regardless of backend (previously SLURM-only; SGE never set this,
+    # letting n_jobs default to -1 and oversubscribe shared Myriad nodes)
+    export N_JOBS_EXT=${task.cpus}
 
     echo "[${task.tag}] cloning git repo..."
     ${gitCloneFunction}
@@ -653,9 +669,11 @@ process quality_control {
 
     if [[ ${params.executor} == "slurm" ]]; then
         echo "[${task.tag}] allocated task time: ${task.time}"
-        # Make sure N_JOBS matches allocated CPUs on SLURM
-        export N_JOBS_EXT=${task.cpus}
     fi
+    # Always cap N_JOBS to the CPUs actually allocated by the scheduler,
+    # regardless of backend (previously SLURM-only; SGE never set this,
+    # letting n_jobs default to -1 and oversubscribe shared Myriad nodes)
+    export N_JOBS_EXT=${task.cpus}
 
     echo "[${task.tag}] cloning git repo..."
     ${gitCloneFunction}
@@ -742,9 +760,11 @@ process nwb_ecephys {
 
     if [[ ${params.executor} == "slurm" ]]; then
         echo "[${task.tag}] allocated task time: ${task.time}"
-        # Make sure N_JOBS matches allocated CPUs on SLURM
-        export N_JOBS_EXT=${task.cpus}
     fi
+    # Always cap N_JOBS to the CPUs actually allocated by the scheduler,
+    # regardless of backend (previously SLURM-only; SGE never set this,
+    # letting n_jobs default to -1 and oversubscribe shared Myriad nodes)
+    export N_JOBS_EXT=${task.cpus}
 
     echo "[${task.tag}] cloning git repo..."
     ${gitCloneFunction}
