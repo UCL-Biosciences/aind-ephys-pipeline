@@ -98,7 +98,7 @@ DATA_PATH=$DATA_PATH RESULTS_PATH=$RESULTS_PATH nextflow \
     -c $CONFIG_FILE \
     -log $RESULTS_PATH/nextflow/nextflow.log \
     run $PIPELINE_PATH/pipeline/main_multi_backend.nf \
-    $RESUME_FLAG \
+    -resume \
     --input $INPUT_TYPE \
     -work-dir $WORKDIR \
     ${PARAMS_FILE:+--params_file $PARAMS_FILE} # expands to nothing if PARAMS_FILE is empty, or --params_file /tmp/ephys_params_XXXX.json if it's set.
