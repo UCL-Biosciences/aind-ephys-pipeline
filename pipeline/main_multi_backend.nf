@@ -261,7 +261,7 @@ process preprocessing {
     echo "[${task.tag}] cloning git repo..."
     ${gitCloneFunction}
     ## Note using a temp fork of the repo to avoid bug in if PARAMS assuming motion_params: see README.
-    clone_repo "https://github.com/jdgilbert245/aind-ephys-preprocessing.git" "${params.versions['PREPROCESSING']}"
+    clone_repo "https://github.com/ucl-biosciences/aind-ephys-preprocessing.git" "${params.versions['PREPROCESSING']}"
     # clone_repo "${params.git_repo_prefix}ephys-preprocessing.git" "${params.versions['PREPROCESSING']}"
 
     echo "[${task.tag}] running capsule..."
