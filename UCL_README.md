@@ -81,6 +81,10 @@ Since no params file, added flag in the sge script: --no-timestamps. But this di
 So added an awkward tmp params file to the top of the script. The problem is that this means the params file overwrites all arguments given in the nextflow command, so we also need to add input type to the params file (for open ephys).
     echo '{"job_dispatch": {"no_timestamps": true, "input": "openephys"}}' > $PARAMS_FILE
 
+**note I reverted to aind preprocessing in commit 75d40a0c4e1d635661717c04e89d0e28e58aeca2.
+Added timestamps manually so not using params file at the moment and realised the fork correcting
+preprocessing is not complete**
+
 #### timestamps fix 3 (today I choose the easy life)
 Decided to try adding time data before running the pipeline. if this works, it will at least confirm that we can run open ephys data through the pipeline. Can then decide whether to pursue again the timestamp fixes.
 
@@ -99,9 +103,32 @@ Usage:
 file is currently here: /home/ucsagil/Scratch/projects/ephys/reconstruct-OpenEphys-timestamps.py
 
 #### preprocessing with params
+*Not using this currently* see UCL-Biosciences preprocessing repo, PR1.
 If you provide params via ${PARAMS_FILE:+--params_file $PARAMS_FILE}, preprocessing capsule follows some logic that breaks. I forked [preprocessing repo ](https://github.com/jdgilbert245/aind-ephys-preprocessing) (note personal not Biosciences - accident), then made the change in 6aca7fce31f45da605f3905d419371ba42827d5a. 
 
 Updated capsule versions for this and main_multi_backend.nf
+
+#### preprocessing min duration
+For the open ephys data, we added timestamps manually. But the recording is 20 seconds, which is less than the default minimum.
+
+I want to be able to control this from the CL so added this is an option:
+1. read the flag in main_multi_backend.nf
+`def min_dur_arg = params.containsKey('min_preprocessing_duration') ? "--min-duration-for-preprocessing ${params.min_preprocessing_duration}" : ""`
+
+2. Change the line that runs preprocessing capsule
+`./run ${min_dur_arg} ${motion_arg} ${preprocessing_args} ${job_args}`
+
+3. add the flag to sge_submit: `   --min_preprocessing_duration 20 \`
+
+This is all done on main branch of aind-ephys-pipeline.
+
+There is an associated motion estimation step that could fail with this short recording. Added the same option to skip motion estimate:
+```
+def motion_arg  = params.containsKey('motion') ? "--motion ${params.motion}" : ""
+`./run ${min_dur_arg} ${motion_arg} ${preprocessing_args} ${job_args}`
+--motion skip # add to CL in sge_submit
+```
+
 
 ### processing QC
 Three independent bugs found in aind-ephys-processing-qc. All three patched and confirmed non-duplicated/non-overlapping in the code. Pending: full pipeline re-run to confirm behaviour end-to-end.

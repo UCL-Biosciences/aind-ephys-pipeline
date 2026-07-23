@@ -51,6 +51,10 @@ if (params.params_file) {
 
 println "PARAMS: ${params}"
 
+// to pick up CL arguments for min processing duration and skipping motion estimate
+def min_dur_arg = params.containsKey('min_preprocessing_duration') ? "--min-duration-for-preprocessing ${params.min_preprocessing_duration}" : ""
+def motion_arg  = params.containsKey('motion') ? "--motion ${params.motion}" : ""
+
 // get commit hashes for capsules
 def parse_capsule_versions() {
     // Check for custom versions file first, fall back to default
@@ -267,7 +271,7 @@ process preprocessing {
     echo "[${task.tag}] running capsule..."
     cd capsule/code
     chmod +x run
-    ./run ${preprocessing_args} ${job_args}
+    ./run ${min_dur_arg} ${motion_arg} ${preprocessing_args} ${job_args}
 
     echo "[${task.tag}] completed!"
     """
