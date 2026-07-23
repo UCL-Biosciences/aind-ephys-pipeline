@@ -9,7 +9,7 @@
 #$ -N "nextflow_aind_submit"
 
 USE_DATA=$1 # supplied with command line flag.
-# can be NWB_SYNTHETIC, SHORT_SPIKEGLX, SARAH_SPIKEGLX, SARAH_SPIKEGLX_CONCAT, OPEN_EPHYS
+# can be NWB_SYNTHETIC, SHORT_SPIKEGLX, SARAH_SPIKEGLX, SARAH_SPIKEGLX_APPEND, OPEN_EPHYS
 # e.g. qsub aind-ephys-pipeline/pipeline/sge_submit.sh OPEN_EPHYS
 
 ### by default, this script will use the --resume flag to resume from previous jobs (if possible)
@@ -48,9 +48,9 @@ elif [ "$USE_DATA" == "SARAH_SPIKEGLX" ]; then
     DATA_PATH="/home/ucsagil/Scratch/projects/ephys/data/spikeglx/$SESSION"
     RESULTS_PATH="/myriadfs/home/ucsagil/Scratch/projects/ephys/results/sarah_spikeglx/$SESSION"
     INPUT_TYPE=spikeglx
-elif [ "$USE_DATA" == "SARAH_SPIKEGLX_CONCAT" ]; then
-    DATA_PATH="/home/ucsagil/Scratch/projects/ephys/data/spikeglx/concat_session"
-    RESULTS_PATH="/myriadfs/home/ucsagil/Scratch/projects/ephys/results/sarah_spikeglx_concat/"
+elif [ "$USE_DATA" == "SARAH_SPIKEGLX_APPEND" ]; then
+    DATA_PATH="/home/ucsagil/Scratch/projects/ephys/data/spikeglx/append_session"
+    RESULTS_PATH="/myriadfs/home/ucsagil/Scratch/projects/ephys/results/sarah_spikeglx_append/"
     INPUT_TYPE=spikeinterface
     PARAMS_FILE=$(mktemp /tmp/ephys_params_XXXX.json)
     echo '{"job_dispatch": {"input": "spikeinterface", "spikeinterface_info": {"reader_type": "spikeinterface"}}}' > $PARAMS_FILE
